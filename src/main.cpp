@@ -5,18 +5,8 @@
 #include <Adafruit_SSD1306.h>
 #include "../lib/cglm/include/cglm/cglm.h"
 
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-
-// Declaration for SSD1306 display connected using software SPI (default case):
-/*#define OLED_MOSI  23
-#define OLED_CLK   18
-#define OLED_DC    4
-#define OLED_CS    5
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT,
-  OLED_MOSI, OLED_CLK, OLED_DC, -1, OLED_CS);*/
-
-// Comment out above, uncomment this block to use hardware SPI
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
 #define OLED_DC     4
 #define OLED_CS     5
 SPIClass vspi(VSPI);
@@ -68,12 +58,11 @@ uint64_t systemTime = 0;
 
 bool init_success = false;
 
-uint16_t packetSize;     // Expected DMP packet size (default is 42 bytes)
-uint8_t FIFOBuffer[42];  // FIFO storage buffer
+uint16_t packetSize;
+uint8_t FIFOBuffer[42];
 
-/*---Orientation/Motion Variables---*/
-Quaternion q;         // [w, x, y, z]         Quaternion container
-VectorFloat gravity;  // [x, y, z]            Gravity vector
+Quaternion q;
+VectorFloat gravity;
 float ypr[3];  
 
 void drawLine(float x, float y, float xd, float yd) {
@@ -85,44 +74,45 @@ void drawLine(float x, float y, float xd, float yd) {
   display.drawLine(X0, Y0, X1, Y1, SSD1306_WHITE);
 }
 
-void drawCube(float x, float y, float z, float rotx, float roty, float rotz) {
+void drawCube(float x, float y, float z, float rotx, float roty, float rotz)
+{
   vec3 pos = {x, y, z};
   vec3 rotAxisX = {1.0f, 0.0f, 0.0f};
   vec3 rotAxisY = {0.0f, 1.0f, 0.0f};
   vec3 rotAxisZ = {0.0f, 0.0f, 1.0f};
 
-	mat4 transform;
+  mat4 transform;
   glm_mat4_identity(transform);
-	glm_translate(transform, pos);
-	glm_rotate(transform, rotx, rotAxisX);
+  glm_translate(transform, pos);
+  glm_rotate(transform, rotx, rotAxisX);
   glm_rotate(transform, roty, rotAxisY);
   glm_rotate(transform, rotz, rotAxisZ);
 
-	mat4 mvp;
+  mat4 mvp;
   glm_mat4_mul(projection, transform, mvp);
 
-	for (uint32_t i = 0; i < 12; i++) {
-		uint32_t offset = i * 2 * 3;
-		vec4 beg = {vertices[offset + 0], vertices[offset + 1], vertices[offset + 2], 1.0f};
-	  vec4 end = {vertices[offset + 3], vertices[offset + 4], vertices[offset + 5], 1.0f};
+  for (uint32_t i = 0; i < 12; i++)
+  {
+    uint32_t offset = i * 2 * 3;
+    vec4 beg = {vertices[offset + 0], vertices[offset + 1], vertices[offset + 2], 1.0f};
+    vec4 end = {vertices[offset + 3], vertices[offset + 4], vertices[offset + 5], 1.0f};
 
-		glm_mat4_mulv(mvp, beg, beg);
+    glm_mat4_mulv(mvp, beg, beg);
     glm_mat4_mulv(mvp, end, end);
 
-		vec2 beg2D = {beg[0] / beg[3], beg[1] / beg[3]};
-		vec2 end2D = {end[0] / end[3], end[1] / end[3]};
+    vec2 beg2D = {beg[0] / beg[3], beg[1] / beg[3]};
+    vec2 end2D = {end[0] / end[3], end[1] / end[3]};
 
-		drawLine(beg2D[0], beg2D[1], end2D[0], end2D[1]);
-	}
+    drawLine(beg2D[0], beg2D[1], end2D[0], end2D[1]);
+  }
 }
 
 void setup() {
   Serial.begin(9600);
 
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC)) {
     Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
+    for(;;);
   }
 
   Wire.begin(13, 15);
@@ -138,19 +128,6 @@ void setup() {
       Serial.print("mpu: DMP Initialization failed");
       return;
   }
-
-  // Calibration on start?
-  // mpudev.CalibrateAccel(10);
-  // mpudev.CalibrateGyro(10);
-
-  // Alternatively, we can set offsets obtained by running IMU_Zero
-  // example from the library.
-  // mpudev.setXAccelOffset(0);
-  // mpudev.setYAccelOffset(0);
-  // mpudev.setZAccelOffset(0);
-  // mpudev.setXGyroOffset(0);
-  // mpudev.setYGyroOffset(0);
-  // mpudev.setZGyroOffset(0);
 
   mpudev.CalibrateAccel(10);
   mpudev.CalibrateGyro(10);
