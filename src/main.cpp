@@ -4,6 +4,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "../lib/cglm/include/cglm/cglm.h"
+#include "../lib/cglm/include/cglm/quat.h"
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -74,7 +75,7 @@ void drawLine(float x, float y, float xd, float yd) {
   display.drawLine(X0, Y0, X1, Y1, SSD1306_WHITE);
 }
 
-void drawCube(float x, float y, float z, float rotx, float roty, float rotz)
+void drawCube(float x, float y, float z, Quaternion q)//float rotx, float roty, float rotz)
 {
   vec3 pos = {x, y, z};
   vec3 rotAxisX = {1.0f, 0.0f, 0.0f};
@@ -82,14 +83,19 @@ void drawCube(float x, float y, float z, float rotx, float roty, float rotz)
   vec3 rotAxisZ = {0.0f, 0.0f, 1.0f};
 
   mat4 transform;
+  mat4 rotationMatrix;
+  vec4 rotation{q.y, -q.x, -q.z, q.w};
+  mat4 mvp;
   glm_mat4_identity(transform);
   glm_translate(transform, pos);
-  glm_rotate(transform, rotx, rotAxisX);
-  glm_rotate(transform, roty, rotAxisY);
-  glm_rotate(transform, rotz, rotAxisZ);
+  glm_quat_mat4(rotation, rotationMatrix);
+  glm_mul(transform, rotationMatrix, mvp);
+  glm_mat4_mul(projection, mvp, mvp);
 
-  mat4 mvp;
-  glm_mat4_mul(projection, transform, mvp);
+  // glm_rotate(transform, rotx, rotAxisX);
+  // glm_rotate(transform, roty, rotAxisY);
+  // glm_rotate(transform, rotz, rotAxisZ);
+
 
   for (uint32_t i = 0; i < 12; i++)
   {
@@ -146,8 +152,8 @@ void loop() {
 
   if (mpudev.dmpGetCurrentFIFOPacket(FIFOBuffer)) {
     mpudev.dmpGetQuaternion(&q, FIFOBuffer);
-    mpudev.dmpGetGravity(&gravity, &q);
-    mpudev.dmpGetYawPitchRoll(ypr, &q, &gravity);
+    //mpudev.dmpGetGravity(&gravity, &q);
+    //mpudev.dmpGetYawPitchRoll(ypr, &q, &gravity);
 
     uint64_t currentTime = esp_timer_get_time();
     uint32_t dTime = currentTime - systemTime;
@@ -157,15 +163,14 @@ void loop() {
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0, 0);
-    display.print(ypr[0]);
-    display.print("\n");
-    display.print(ypr[1]);
-    display.print("\n");
-    display.println(ypr[2]);
-    //display.print("FPS: ");
-    //display.println(1000000 / dTime);
+    display.println(q.x);
+    display.println(q.y);
+    display.println(q.z);
+    display.println(q.w);
+    display.println("FPS: ");
+    display.println(1000000 / dTime);
 
-    drawCube(0.0f, -0.1, -4.2f, -ypr[1], -ypr[2], ypr[0]);
+    drawCube(0.0f, -0.1, -4.2f, q);
     /*drawCube(-3.8f, 0.0, -11.0f, angle + 30.0, 0.2f, 0.6f, 0.3f);
     drawCube(2.5f, 0.0, -8.0f, angle, 0.9f, 0.3f, 0.7f);*/
 
